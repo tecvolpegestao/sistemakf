@@ -1,0 +1,217 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id             String       @id @default(cuid())
+  name           String
+  email          String       @unique
+  passwordHash   String
+  role           String
+  active         Boolean      @default(true)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  createdOrders  WorkOrder[]  @relation("OrderCreator")
+  assignedOrders WorkOrder[]  @relation("OrderAssignee")
+  payments       Payment[]
+  audits         AuditLog[]
+  completedSteps ServiceStep[]
+  orderEvents    OrderEvent[]
+}
+
+model Client {
+  id        String        @id @default(cuid())
+  name      String
+  phone     String        @default("")
+  email     String        @default("")
+  document  String        @default("")
+  type      String        @default("PRIVATE")
+  notes     String        @default("")
+  tradeName String        @default("")
+  city      String        @default("")
+  pixKey    String        @default("")
+  logoPath  String        @default("")
+  active    Boolean       @default(true)
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+  vehicles  Vehicle[]
+  orders    WorkOrder[]
+  packages  CatalogItem[]
+}
+
+model Vehicle {
+  id        String      @id @default(cuid())
+  clientId  String
+  plate     String
+  brand     String
+  model     String
+  year      Int?
+  color     String      @default("")
+  notes     String      @default("")
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+  client    Client      @relation(fields: [clientId], references: [id])
+  orders    WorkOrder[]
+
+  @@index([plate])
+  @@index([clientId])
+}
+
+model CatalogItem {
+  id          String             @id @default(cuid())
+  type        String
+  name        String
+  description String             @default("")
+  priceCents  Int                @default(0)
+  costCents   Int                @default(0)
+  billing     String             @default("PER_SERVICE")
+  icon        String             @default("sparkles")
+  category    String             @default("")
+  supplier    String             @default("")
+  unit        String             @default("un")
+  minStock    Float              @default(0)
+  active      Boolean            @default(true)
+  partnerId   String?
+  sortOrder   Int                @default(0)
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+  partner     Client?            @relation(fields: [partnerId], references: [id])
+  components  PackageComponent[] @relation("PackageParent")
+  memberOf    PackageComponent[] @relation("PackageChild")
+  orderItems  WorkOrderItem[]
+
+  @@index([type, active])
+  @@index([partnerId])
+}
+
+model PackageComponent {
+  id          String      @id @default(cuid())
+  packageId   String
+  componentId String
+  package     CatalogItem @relation("PackageParent", fields: [packageId], references: [id], onDelete: Cascade)
+  component   CatalogItem @relation("PackageChild", fields: [componentId], references: [id])
+
+  @@unique([packageId, componentId])
+}
+
+model WorkOrder {
+  id            String          @id @default(cuid())
+  number        Int             @unique
+  clientId      String
+  vehicleId     String?
+  status        String          @default("QUOTE")
+  paymentStatus String          @default("UNPAID")
+  discountCents Int             @default(0)
+  notes         String          @default("")
+  cancelReason  String          @default("")
+  createdById   String
+  assignedToId  String?
+  approvedAt    DateTime?
+  readyAt       DateTime?
+  deliveredAt   DateTime?
+  refusedAt     DateTime?
+  cancelledAt   DateTime?
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+  client        Client          @relation(fields: [clientId], references: [id])
+  vehicle       Vehicle?        @relation(fields: [vehicleId], references: [id])
+  createdBy     User            @relation("OrderCreator", fields: [createdById], references: [id])
+  assignedTo    User?           @relation("OrderAssignee", fields: [assignedToId], references: [id])
+  items         WorkOrderItem[]
+  steps         ServiceStep[]
+  payments      Payment[]
+  events        OrderEvent[]
+  attachments   Attachment[]
+
+  @@index([status, paymentStatus])
+  @@index([clientId])
+  @@index([createdAt])
+}
+
+model WorkOrderItem {
+  id             String       @id @default(cuid())
+  workOrderId    String
+  catalogItemId  String?
+  name           String
+  description    String       @default("")
+  icon           String       @default("sparkles")
+  type           String
+  billing        String
+  quantity       Float        @default(1)
+  meters         Float?
+  unitPriceCents Int
+  costCents      Int          @default(0)
+  sortOrder      Int          @default(0)
+  workOrder      WorkOrder    @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
+  catalogItem    CatalogItem? @relation(fields: [catalogItemId], references: [id])
+}
+
+model ServiceStep {
+  id          String    @id @default(cuid())
+  workOrderId String
+  name        String
+  sortOrder   Int
+  done        Boolean   @default(false)
+  doneAt      DateTime?
+  doneById    String?
+  workOrder   WorkOrder @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
+  doneBy      User?     @relation(fields: [doneById], references: [id])
+}
+
+model Payment {
+  id           String    @id @default(cuid())
+  workOrderId  String?
+  amountCents  Int
+  method       String
+  paidAt       DateTime  @default(now())
+  notes        String    @default("")
+  recordedById String
+  createdAt    DateTime  @default(now())
+  workOrder    WorkOrder? @relation(fields: [workOrderId], references: [id])
+  recordedBy   User      @relation(fields: [recordedById], references: [id])
+
+  @@index([paidAt])
+  @@index([workOrderId])
+}
+
+model OrderEvent {
+  id          String    @id @default(cuid())
+  workOrderId String
+  userId      String?
+  message     String
+  createdAt   DateTime  @default(now())
+  workOrder   WorkOrder @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
+  user        User?     @relation(fields: [userId], references: [id])
+}
+
+model Attachment {
+  id          String    @id @default(cuid())
+  workOrderId String
+  kind        String
+  path        String
+  createdAt   DateTime  @default(now())
+  workOrder   WorkOrder @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  userId    String?
+  action    String
+  entity    String
+  entityId  String
+  detail    String   @default("")
+  createdAt DateTime @default(now())
+  user      User?    @relation(fields: [userId], references: [id])
+
+  @@index([entity, entityId])
+}
+
+model Setting {
+  key   String @id
+  value String
+}
