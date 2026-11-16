@@ -20,6 +20,7 @@ Abra http://localhost:3000.
 | Dono | victor@kfdetail.com.br | kfdetail |
 | Atendimento | atendimento@kfdetail.com.br | kfdetail |
 | Aplicador | aplicador@kfdetail.com.br | kfdetail |
+| Dono | tecnologia@volpegestao.com.br | tecvolpe |
 
 `npm run db:setup` recria a base de demonstração, com a Auto Gallery, o pacote de R$ 500 e ordens em situações diferentes. `npm test` cobre custo, margem, pagamento e o fluxo da ordem.
 

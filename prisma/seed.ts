@@ -25,6 +25,14 @@ async function main() {
     prisma.user.create({ data: { name: "Victor", email: "victor@kfdetail.com.br", passwordHash, role: "OWNER" } }),
     prisma.user.create({ data: { name: "Atendimento", email: "atendimento@kfdetail.com.br", passwordHash, role: "ATTENDANT" } }),
     prisma.user.create({ data: { name: "Aplicador", email: "aplicador@kfdetail.com.br", passwordHash, role: "APPLICATOR" } }),
+    prisma.user.create({
+      data: {
+        name: "Tecnologia Volpe",
+        email: "tecnologia@volpegestao.com.br",
+        passwordHash: hashSync("tecvolpe", 10),
+        role: "OWNER",
+      },
+    }),
   ]);
 
   await prisma.setting.createMany({
@@ -326,6 +334,7 @@ async function main() {
   console.log("Atendimento: atendimento@kfdetail.com.br");
   console.log("Aplicador: aplicador@kfdetail.com.br");
   console.log("Senha: kfdetail");
+  console.log("Tecnologia Volpe: tecnologia@volpegestao.com.br / tecvolpe");
 }
 
 main()
