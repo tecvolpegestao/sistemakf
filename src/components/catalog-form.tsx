@@ -5,6 +5,7 @@ import { saveCatalog } from "@/server/catalog-actions";
 import { centsToInput } from "@/lib/format";
 import { ICONS, TYPE_LABEL } from "@/lib/labels";
 import type { FormState } from "@/lib/types";
+import { ComboBox, fold } from "./combo-box";
 import { Alert, Button, Field, Panel } from "./ui";
 import { ServiceIcon } from "./service-icon";
 
@@ -35,6 +36,13 @@ export function CatalogForm({
 }) {
   const [state, action, pending] = useActionState(saveCatalog, null as FormState);
   const [type, setType] = useState(item?.type ?? "LABOR");
+  const [icon, setIcon] = useState(item?.icon ?? "sparkles");
+  const [serviceQuery, setServiceQuery] = useState("");
+  const visibleServices = services.filter((service) => {
+    const query = serviceQuery.trim();
+    if (!query) return true;
+    return fold(service.name).includes(fold(query)) || item?.componentIds.includes(service.id);
+  });
 
   return (
     <form action={action} className="max-w-2xl space-y-4">
@@ -42,13 +50,13 @@ export function CatalogForm({
       {state?.error ? <Alert>{state.error}</Alert> : null}
       <Panel className="grid gap-4">
         <Field label="Tipo">
-          <select name="type" className="field" value={type} onChange={(event) => setType(event.target.value)}>
-            {Object.entries(TYPE_LABEL).map(([value, label]) => (
-              <option key={value} value={value}>
-                {label}
-              </option>
-            ))}
-          </select>
+          <ComboBox
+            name="type"
+            ariaLabel="Tipo"
+            value={type}
+            onChange={setType}
+            options={Object.entries(TYPE_LABEL).map(([value, label]) => ({ value, label }))}
+          />
         </Field>
         <Field label="Nome">
           <input name="name" className="field" defaultValue={item?.name ?? ""} required />
@@ -60,29 +68,34 @@ export function CatalogForm({
           <Field label={type === "MATERIAL_SERVICE" ? "Preço" : "Preço"}>
             <input name="price" className="field" defaultValue={item ? centsToInput(item.priceCents) : ""} required />
           </Field>
-          <Field label="Custo" hint="Estimado ou de compra. A margem só aparece para o dono.">
+          <Field label="Custo" hint="Custo de compra do produto. A margem só aparece para o dono.">
             <input name="cost" className="field" defaultValue={item && item.costCents > 0 ? centsToInput(item.costCents) : ""} />
           </Field>
         </div>
         {type === "MATERIAL_SERVICE" ? (
           <Field label="Cobrança">
-            <select name="billing" className="field" defaultValue={item?.billing ?? "PER_METER"}>
-              <option value="PER_METER">Por metro</option>
-              <option value="PER_SERVICE">Por serviço</option>
-            </select>
+            <ComboBox
+              name="billing"
+              ariaLabel="Cobrança"
+              defaultValue={item?.billing ?? "PER_METER"}
+              options={[
+                { value: "PER_METER", label: "Por metro" },
+                { value: "PER_SERVICE", label: "Por serviço" },
+              ]}
+            />
           </Field>
         ) : null}
         <Field label="Ícone">
-          <select name="icon" className="field" defaultValue={item?.icon ?? "sparkles"}>
-            {ICONS.map((icon) => (
-              <option key={icon.id} value={icon.id}>
-                {icon.label}
-              </option>
-            ))}
-          </select>
+          <ComboBox
+            name="icon"
+            ariaLabel="Ícone"
+            value={icon}
+            onChange={setIcon}
+            options={ICONS.map((entry) => ({ value: entry.id, label: entry.label }))}
+          />
         </Field>
         <div className="flex items-center gap-2 text-sm">
-          <ServiceIcon name={item?.icon ?? "sparkles"} />
+          <ServiceIcon name={icon} />
           <label className="inline-flex items-center gap-2">
             <input type="checkbox" name="active" defaultChecked={item?.active ?? true} />
             Ativo
@@ -94,17 +107,19 @@ export function CatalogForm({
         <Panel className="space-y-3">
           <h2 className="font-display text-lg">Serviços inclusos</h2>
           <Field label="Parceiro" hint="Deixe em branco se o pacote vale para qualquer cliente.">
-            <select name="partnerId" className="field" defaultValue={item?.partnerId ?? ""}>
-              <option value="">Nenhum</option>
-              {partners.map((partner) => (
-                <option key={partner.id} value={partner.id}>
-                  {partner.name}
-                </option>
-              ))}
-            </select>
+            <ComboBox
+              name="partnerId"
+              ariaLabel="Parceiro"
+              placeholder="Buscar parceiro"
+              defaultValue={item?.partnerId ?? ""}
+              options={[{ value: "", label: "Nenhum" }, ...partners.map((partner) => ({ value: partner.id, label: partner.name }))]}
+            />
+          </Field>
+          <Field label="Buscar serviço">
+            <input className="field" value={serviceQuery} onChange={(event) => setServiceQuery(event.target.value)} placeholder="Nome do serviço" />
           </Field>
           <ul className="space-y-2">
-            {services.map((service) => (
+            {visibleServices.map((service) => (
               <li key={service.id}>
                 <label className="flex items-center gap-2 text-sm">
                   <input type="checkbox" name="componentId" value={service.id} defaultChecked={item?.componentIds.includes(service.id)} />
@@ -116,7 +131,7 @@ export function CatalogForm({
         </Panel>
       ) : null}
 
-      {type === "RESALE" ? (
+      {type === "MATERIAL_SERVICE" || type === "RESALE" ? (
         <Panel className="grid gap-4 sm:grid-cols-2">
           <Field label="Categoria">
             <input name="category" className="field" defaultValue={item?.category ?? ""} />
@@ -127,7 +142,7 @@ export function CatalogForm({
           <Field label="Unidade">
             <input name="unit" className="field" defaultValue={item?.unit ?? "un"} />
           </Field>
-          <Field label="Estoque mínimo" hint="O controle de estoque entra na próxima fase.">
+          <Field label="Estoque mínimo" hint="O estoque avisa quando a quantidade fica abaixo deste número.">
             <input name="minStock" className="field" defaultValue={item?.minStock ? String(item.minStock) : ""} />
           </Field>
         </Panel>

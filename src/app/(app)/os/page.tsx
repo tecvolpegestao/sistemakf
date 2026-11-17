@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import type { Prisma } from "@prisma/client";
 import Link from "next/link";
+import { ComboBox } from "@/components/combo-box";
 import { OrderTable, type OrderRow } from "@/components/order-table";
 import { ButtonLink, PageHeader, PaymentBadge, StatusBadge } from "@/components/ui";
 import { requireUser } from "@/lib/auth";
@@ -82,42 +83,45 @@ export default async function OrdersPage({
         description="Do orçamento à entrega. A situação do serviço e a do pagamento andam separadas."
         actions={showMoney ? <ButtonLink href="/os/nova">Novo orçamento</ButtonLink> : undefined}
       />
-      <form className="mb-4 grid gap-2 md:grid-cols-6">
-        <input name="q" defaultValue={current.q} className="field md:col-span-2" placeholder="Cliente, placa ou número" aria-label="Buscar ordem" />
-        <select name="status" defaultValue={current.status} className="field" aria-label="Situação">
-          <option value="">Serviço</option>
-          {Object.entries(STATUS_LABEL).map(([value, label]) => (
-            <option key={value} value={value}>
-              {label}
-            </option>
-          ))}
-        </select>
+      <form className="mb-4 flex flex-wrap items-center gap-2">
+        <input name="q" defaultValue={current.q} className="field w-full sm:w-64" placeholder="Cliente, placa ou número" aria-label="Buscar ordem" />
+        <div className="w-full sm:w-48">
+          <ComboBox
+            name="status"
+            ariaLabel="Situação"
+            placeholder="Serviço"
+            defaultValue={current.status}
+            options={[{ value: "", label: "Serviço" }, ...Object.entries(STATUS_LABEL).map(([value, label]) => ({ value, label }))]}
+          />
+        </div>
         {showMoney ? (
-          <select name="payment" defaultValue={current.payment} className="field" aria-label="Pagamento">
-            <option value="">Pagamento</option>
-            {Object.entries(PAYMENT_LABEL).map(([value, label]) => (
-              <option key={value} value={value}>
-                {label}
-              </option>
-            ))}
-          </select>
+          <div className="w-full sm:w-44">
+            <ComboBox
+              name="payment"
+              ariaLabel="Pagamento"
+              placeholder="Pagamento"
+              defaultValue={current.payment}
+              options={[{ value: "", label: "Pagamento" }, ...Object.entries(PAYMENT_LABEL).map(([value, label]) => ({ value, label }))]}
+            />
+          </div>
         ) : (
           <input type="hidden" name="payment" value="" />
         )}
-        <select name="partner" defaultValue={current.partner} className="field" aria-label="Parceiro">
-          <option value="">Parceiro</option>
-          {partners.map((partner) => (
-            <option key={partner.id} value={partner.id}>
-              {partner.name}
-            </option>
-          ))}
-        </select>
+        <div className="w-full sm:w-48">
+          <ComboBox
+            name="partner"
+            ariaLabel="Parceiro"
+            placeholder="Parceiro"
+            defaultValue={current.partner}
+            options={[{ value: "", label: "Parceiro" }, ...partners.map((partner) => ({ value: partner.id, label: partner.name }))]}
+          />
+        </div>
+        <input name="from" type="date" defaultValue={current.from} className="field w-full sm:w-40" aria-label="De" />
+        <input name="to" type="date" defaultValue={current.to} className="field w-full sm:w-40" aria-label="Até" />
         <input type="hidden" name="view" value={current.view} />
-        <button className="rounded-md border border-line bg-card px-3 py-2 text-sm" type="submit">
+        <button className="button-line" type="submit">
           Filtrar
         </button>
-        <input name="from" type="date" defaultValue={current.from} className="field" aria-label="De" />
-        <input name="to" type="date" defaultValue={current.to} className="field" aria-label="Até" />
       </form>
       <div className="mb-4 flex gap-2 text-sm">
         <Link href={withParams("/os", current, { view: "table" })} className={current.view === "board" ? "text-muted" : "text-link"}>

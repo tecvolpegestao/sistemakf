@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { ComboBox } from "@/components/combo-box";
 import { Empty, PageHeader } from "@/components/ui";
 import { requireRoles } from "@/lib/auth";
 import { prisma } from "@/lib/db";
@@ -25,7 +26,7 @@ export default async function PaymentsPage({
       paidAt: { gte: from, ...(to ? { lte: to } : {}) },
       ...(method ? { method } : {}),
     },
-    include: { recordedBy: true, workOrder: { include: { client: true } } },
+    include: { recordedBy: true, workOrder: { include: { client: true } }, sale: { include: { client: true } } },
     orderBy: { paidAt: "desc" },
   });
   const total = payments.reduce((sum, payment) => sum + payment.amountCents, 0);
@@ -33,18 +34,19 @@ export default async function PaymentsPage({
   return (
     <div>
       <PageHeader title="Recebimentos" description="Tudo o que entrou de serviços e pacotes, com a forma e quem registrou." />
-      <form className="mb-4 flex flex-col gap-2 sm:flex-row">
-        <input name="from" type="date" defaultValue={fromInput || dateInput(from)} className="field sm:w-44" aria-label="De" />
-        <input name="to" type="date" defaultValue={toInput} className="field sm:w-44" aria-label="Até" />
-        <select name="method" defaultValue={method} className="field sm:w-40" aria-label="Forma">
-          <option value="">Todas</option>
-          {Object.entries(METHOD_LABEL).map(([value, label]) => (
-            <option key={value} value={value}>
-              {label}
-            </option>
-          ))}
-        </select>
-        <button className="rounded-md border border-line bg-card px-3 py-2 text-sm" type="submit">
+      <form className="mb-4 flex flex-wrap items-center gap-2">
+        <input name="from" type="date" defaultValue={fromInput || dateInput(from)} className="field w-full sm:w-44" aria-label="De" />
+        <input name="to" type="date" defaultValue={toInput} className="field w-full sm:w-44" aria-label="Até" />
+        <div className="w-full sm:w-40">
+          <ComboBox
+            name="method"
+            ariaLabel="Forma"
+            placeholder="Todas"
+            defaultValue={method}
+            options={[{ value: "", label: "Todas" }, ...Object.entries(METHOD_LABEL).map(([value, label]) => ({ value, label }))]}
+          />
+        </div>
+        <button className="button-line" type="submit">
           Filtrar
         </button>
       </form>
@@ -74,11 +76,15 @@ export default async function PaymentsPage({
                       <Link href={`/os/${payment.workOrderId}`} className="text-link">
                         OS {payment.workOrder.number}
                       </Link>
+                    ) : payment.sale ? (
+                      <Link href={`/vendas/${payment.saleId}`} className="text-link">
+                        Venda {payment.sale.number}
+                      </Link>
                     ) : (
                       "—"
                     )}
                   </td>
-                  <td className="px-3 py-3">{payment.workOrder?.client.name ?? "—"}</td>
+                  <td className="px-3 py-3">{payment.workOrder?.client.name ?? payment.sale?.client?.name ?? (payment.sale ? "Balcão" : "—")}</td>
                   <td className="px-3 py-3">{METHOD_LABEL[payment.method as keyof typeof METHOD_LABEL] ?? payment.method}</td>
                   <td className="px-3 py-3 text-right tabular-nums">{formatBRL(payment.amountCents)}</td>
                 </tr>

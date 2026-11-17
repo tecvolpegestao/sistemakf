@@ -3,6 +3,7 @@
 import { useActionState, useState } from "react";
 import { saveClient } from "@/server/client-actions";
 import type { FormState } from "@/lib/types";
+import { ComboBox } from "./combo-box";
 import { Alert, Button, Field, Panel } from "./ui";
 
 export function ClientForm({
@@ -45,10 +46,16 @@ export function ClientForm({
           <input name="document" className="field" defaultValue={client?.document ?? ""} />
         </Field>
         <Field label="Tipo">
-          <select name="type" className="field" value={type} onChange={(event) => setType(event.target.value)}>
-            <option value="PRIVATE">Particular</option>
-            <option value="PARTNER">Parceiro</option>
-          </select>
+          <ComboBox
+            name="type"
+            ariaLabel="Tipo"
+            value={type}
+            onChange={setType}
+            options={[
+              { value: "PRIVATE", label: "Particular" },
+              { value: "PARTNER", label: "Parceiro" },
+            ]}
+          />
         </Field>
         <div className="sm:col-span-2">
           <Field label="Observações">

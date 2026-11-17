@@ -128,11 +128,26 @@ O dono ajusta os textos de apresentação e de fechamento do PDF, o Instagram, a
 
 A mesma tela mostra as últimas ações importantes: mudança de preço, cancelamento, pagamento e alteração de configuração.
 
+## Estoque e custo real
+
+PPF, película e produtos de revenda têm saldo. O dono registra a entrada, com a quantidade e o custo unitário, e o ajuste quando a contagem física diverge. O motivo do ajuste fica no histórico.
+
+Na ordem, a equipe lança o consumo. A quantidade sai do estoque e o custo daquele lançamento fica gravado. O painel da ordem mostra o custo estimado, vindo do catálogo no momento do orçamento, e o custo real, somado do consumo. A mão de obra continua fora da conta.
+
+Se o saldo não cobre o consumo, o lançamento não entra. Primeiro se faz a entrada ou o ajuste.
+
+## Venda avulsa
+
+Em Vendas, o atendimento registra um produto de revenda fora de uma ordem. A saída baixa o estoque na hora. O recebimento pode ser imediato, em Pix, dinheiro ou cartão. O dono pode cancelar a venda: o estoque volta e os recebimentos daquela venda saem.
+
+## Fechamento semanal
+
+Em Fechamentos, escolha a loja e um dia da semana. As ordens prontas ou entregues daquela semana já vêm marcadas. Uma ordem entra em um único fechamento.
+
+O recebimento do fechamento é distribuído nas ordens, da mais antiga para a mais nova, até cobrir o saldo de cada uma. Encerrar a semana trava a lista. O saldo que sobrar continua em A receber.
+
 ## O que este manual ainda não cobre
 
-- Estoque, entrada de produto e baixa pelo consumo real da ordem.
-- Venda de produto fora de uma ordem de serviço.
-- Fechamento semanal com a Auto Gallery e as outras lojas.
 - Link para o cliente aprovar o orçamento dentro do sistema. Hoje a aprovação é registrada pela equipe, e o PDF continua com o campo de assinatura.
 - Nota fiscal.
 

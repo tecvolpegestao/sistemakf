@@ -2,8 +2,9 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { requireUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
-import { canSeeMoney, totalsOf } from "@/lib/domain";
-import { formatBRL, formatDate, startOfMonth } from "@/lib/format";
+import { canSeeCosts, canSeeMoney, marginRatio, totalsOf } from "@/lib/domain";
+import { formatBRL, formatDate, formatPercent, startOfMonth } from "@/lib/format";
+import { consumptionCost, loadStock } from "@/lib/inventory";
 import { STATUS_LABEL } from "@/lib/labels";
 import type { ServiceStatus } from "@/lib/types";
 import { ButtonLink, PageHeader, Panel, PaymentBadge, Stat, StatusBadge } from "@/components/ui";
@@ -16,7 +17,7 @@ export default async function DashboardPage() {
   const monthStart = startOfMonth();
   const orders = await prisma.workOrder.findMany({
     where: user.role === "APPLICATOR" ? { assignedToId: user.id } : undefined,
-    include: { client: true, vehicle: true, items: true, payments: true },
+    include: { client: true, vehicle: true, items: true, payments: true, movements: true },
     orderBy: { updatedAt: "desc" },
   });
   const active = orders.filter((order) => ["APPROVED", "IN_PROGRESS", "READY"].includes(order.status));
@@ -27,6 +28,30 @@ export default async function DashboardPage() {
     ? await prisma.payment.aggregate({ _sum: { amountCents: true }, where: { paidAt: { gte: monthStart } } })
     : null;
   const mine = user.role === "APPLICATOR" ? orders.filter((order) => ["APPROVED", "IN_PROGRESS"].includes(order.status)) : active;
+  const showCosts = canSeeCosts(user.role);
+  const stock = showMoney ? await loadStock() : [];
+  const lowStock = stock.filter((item) => item.low);
+  const monthSales = showMoney
+    ? await prisma.sale.findMany({
+        where: { status: { not: "CANCELLED" }, createdAt: { gte: monthStart } },
+        include: { items: true },
+      })
+    : [];
+  const salesCents = monthSales.reduce(
+    (sum, sale) => sum + sale.items.reduce((inner, item) => inner + Math.round(item.quantity * item.unitPriceCents), 0),
+    0,
+  );
+  const openSettlements = showMoney ? await prisma.settlement.count({ where: { status: "OPEN" } }) : 0;
+  const deliveredMonth = orders.filter((order) => order.status === "DELIVERED" && order.deliveredAt && order.deliveredAt >= monthStart);
+  const deliveredPrice = deliveredMonth.reduce((sum, order) => sum + totalsOf(order).totalCents, 0);
+  const deliveredReal = deliveredMonth.reduce(
+    (sum, order) => sum + order.movements.filter((movement) => movement.kind === "OUT").reduce((inner, movement) => inner + consumptionCost(movement.quantity, movement.unitCostCents), 0),
+    0,
+  );
+  const counts = (["QUOTE", "AWAITING_APPROVAL", "APPROVED", "IN_PROGRESS", "READY", "DELIVERED"] as ServiceStatus[]).map((status) => ({
+    status,
+    count: orders.filter((order) => order.status === status).length,
+  }));
 
   return (
     <div>
@@ -46,7 +71,39 @@ export default async function DashboardPage() {
         {showMoney ? (
           <Stat label="Recebido no mês" value={formatBRL(received?._sum.amountCents ?? 0)} href="/recebimentos" />
         ) : null}
+        {showMoney ? <Stat label="Vendas do mês" value={formatBRL(salesCents)} href="/vendas" hint="Fora das ordens de serviço" /> : null}
+        {showMoney ? <Stat label="Estoque baixo" value={String(lowStock.length)} href="/estoque" hint="Abaixo do mínimo" /> : null}
+        {showMoney ? <Stat label="Fechamentos" value={String(openSettlements)} href="/fechamentos" hint="Semanas ainda em aberto" /> : null}
+        {showCosts ? (
+          <Stat
+            label="Margem real do mês"
+            value={deliveredReal > 0 ? formatPercent(marginRatio(deliveredPrice, deliveredReal)) : "—"}
+            hint="Entregues no mês, pelo consumo lançado"
+          />
+        ) : null}
       </div>
+      {showMoney ? (
+        <div className="mt-3 flex flex-wrap gap-2">
+          {counts.map((item) => (
+            <Link key={item.status} href={`/os?status=${item.status}`} className="inline-flex items-center gap-2 rounded-full border border-line bg-card px-3 py-1 text-sm">
+              <span className="text-muted">{STATUS_LABEL[item.status]}</span>
+              <span className="tabular-nums">{item.count}</span>
+            </Link>
+          ))}
+        </div>
+      ) : null}
+      {lowStock.length > 0 && showMoney ? (
+        <Panel className="mt-4">
+          <h2 className="font-display text-lg">Para repor</h2>
+          <ul className="mt-2 space-y-1 text-sm">
+            {lowStock.map((item) => (
+              <li key={item.id}>
+                {item.name}: {item.quantity} {item.unit || "un"} · mínimo {item.minStock}
+              </li>
+            ))}
+          </ul>
+        </Panel>
+      ) : null}
       <Panel className="mt-6">
         <h2 className="font-display text-lg">{user.role === "APPLICATOR" ? "Para executar" : "Veículos em atendimento"}</h2>
         <ul className="mt-3 divide-y divide-line">
@@ -71,7 +128,7 @@ export default async function DashboardPage() {
       </Panel>
       {showMoney ? (
         <p className="mt-4 text-xs text-muted">
-          Situações: {Object.values(STATUS_LABEL).slice(0, 6).join(", ")}. Custo real e fechamento com parceiros entram nas próximas fases.
+          Situações: {Object.values(STATUS_LABEL).slice(0, 6).join(", ")}. A margem real usa o consumo lançado nas ordens entregues no mês.
         </p>
       ) : null}
     </div>

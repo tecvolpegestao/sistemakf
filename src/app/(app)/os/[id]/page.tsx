@@ -1,14 +1,17 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
+import { ComboBox } from "@/components/combo-box";
+import { ConsumptionPanel } from "@/components/consumption-form";
 import { CopyButton } from "@/components/copy-button";
 import { PhotoField } from "@/components/photo-field";
 import { ServiceIcon } from "@/components/service-icon";
 import { Alert, Button, ButtonLink, Field, PageHeader, Panel, PaymentBadge, StatusBadge } from "@/components/ui";
 import { requireUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
-import { asStatus, availableTransitions, canManage, canSeeCosts, canSeeMoney, lineTotalCents, priceBoxLabel, totalsOf } from "@/lib/domain";
+import { asStatus, availableTransitions, canManage, canSeeCosts, canSeeMoney, lineTotalCents, marginRatio, priceBoxLabel, totalsOf } from "@/lib/domain";
 import { centsToInput, formatBRL, formatDate, formatDateTime, formatNumber, formatPercent, queryValue, quoteSummary, todayInput, vehicleLine, whatsAppUrl } from "@/lib/format";
+import { consumptionCost, loadStock } from "@/lib/inventory";
 import { ATTACHMENT_LABEL, METHOD_LABEL, STATUS_ACTION } from "@/lib/labels";
 import { getSettings } from "@/lib/settings";
 import { addAttachment, cancelOrder, registerPayment, removeAttachment, toggleStep, transitionOrder } from "@/server/order-actions";
@@ -61,6 +64,13 @@ export default async function OrderPage({
   const showCosts = canSeeCosts(user.role);
   const totals = totalsOf(order);
   const settings = await getSettings();
+  const stock = showMoney || user.role === "APPLICATOR" ? await loadStock() : [];
+  const consumptions = await prisma.stockMovement.findMany({
+    where: { workOrderId: order.id, kind: "OUT" },
+    include: { catalogItem: true, createdBy: true },
+    orderBy: { createdAt: "desc" },
+  });
+  const realCostCents = consumptions.reduce((sum, movement) => sum + consumptionCost(movement.quantity, movement.unitCostCents), 0);
   const actions = availableTransitions(status, user.role).filter((item) => item !== "CANCELLED");
   const canEdit =
     canManage(user.role) &&
@@ -210,6 +220,37 @@ export default async function OrderPage({
         </ul>
       </Panel>
 
+      {!closed || consumptions.length > 0 ? (
+        <Panel>
+          <h2 className="font-display text-lg">Consumo real</h2>
+          <p className="mt-1 text-sm text-muted">A quantidade usada baixa o estoque. O custo real fica congelado neste lançamento.</p>
+          <div className="mt-3">
+            <ConsumptionPanel
+              orderId={order.id}
+              showCost={showCosts}
+              canRecord={!closed}
+              canRemove={user.role === "OWNER" && !closed}
+              options={stock
+                .filter((item) => item.active)
+                .map((item) => ({
+                  id: item.id,
+                  label: `${item.name} · ${formatNumber(item.quantity)} ${item.unit || "un"}`,
+                }))}
+              rows={consumptions.map((movement) => ({
+                id: movement.id,
+                name: movement.catalogItem.name,
+                quantity: movement.quantity,
+                unit: movement.catalogItem.unit || "un",
+                costCents: consumptionCost(movement.quantity, movement.unitCostCents),
+                note: movement.note,
+                who: movement.createdBy.name,
+                when: movement.createdAt.toISOString(),
+              }))}
+            />
+          </div>
+        </Panel>
+      ) : null}
+
       <Panel>
         <h2 className="font-display text-lg">Fotos</h2>
         <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
@@ -235,10 +276,15 @@ export default async function OrderPage({
           <form action={addAttachment} className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-end">
             <input type="hidden" name="orderId" value={order.id} />
             <Field label="Momento">
-              <select name="kind" className="field" defaultValue="BEFORE">
-                <option value="BEFORE">Antes</option>
-                <option value="AFTER">Depois</option>
-              </select>
+              <ComboBox
+                name="kind"
+                ariaLabel="Momento"
+                defaultValue="BEFORE"
+                options={[
+                  { value: "BEFORE", label: "Antes" },
+                  { value: "AFTER", label: "Depois" },
+                ]}
+              />
             </Field>
             <PhotoField />
             <Button type="submit" variant="secondary">
@@ -251,7 +297,7 @@ export default async function OrderPage({
       {showCosts ? (
         <Panel>
           <h2 className="font-display text-lg">Financeiro</h2>
-          <dl className="mt-3 grid gap-3 sm:grid-cols-3">
+          <dl className="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
             <div>
               <dt className="text-sm text-muted">Valor cobrado</dt>
               <dd className="tabular-nums">{formatBRL(totals.totalCents)}</dd>
@@ -261,12 +307,22 @@ export default async function OrderPage({
               <dd className="tabular-nums">{totals.costCents > 0 ? formatBRL(totals.costCents) : "Ainda não informado"}</dd>
             </div>
             <div>
-              <dt className="text-sm text-muted">Margem estimada</dt>
-              <dd className="tabular-nums">{totals.costCents > 0 ? formatPercent(totals.margin) : "—"}</dd>
+              <dt className="text-sm text-muted">Custo real</dt>
+              <dd className="tabular-nums">{realCostCents > 0 ? formatBRL(realCostCents) : "Sem consumo"}</dd>
+            </div>
+            <div>
+              <dt className="text-sm text-muted">Margem</dt>
+              <dd className="tabular-nums">
+                {realCostCents > 0
+                  ? formatPercent(marginRatio(totals.totalCents, realCostCents))
+                  : totals.costCents > 0
+                    ? formatPercent(totals.margin)
+                    : "—"}
+              </dd>
             </div>
           </dl>
           <p className="mt-3 text-xs text-muted">
-            O custo real, com o consumo confirmado na ordem, entra na fase de estoque. Aqui o valor usa o custo do catálogo no momento do orçamento.
+            O estimado usa o custo do catálogo gravado no orçamento. O real soma o consumo lançado nesta ordem. A mão de obra continua fora da conta.
           </p>
         </Panel>
       ) : null}
@@ -282,13 +338,12 @@ export default async function OrderPage({
                 <input name="amount" className="field" defaultValue={centsToInput(totals.balanceCents)} />
               </Field>
               <Field label="Forma">
-                <select name="method" className="field" defaultValue="PIX">
-                  {Object.entries(METHOD_LABEL).map(([value, label]) => (
-                    <option key={value} value={value}>
-                      {label}
-                    </option>
-                  ))}
-                </select>
+                <ComboBox
+                  name="method"
+                  ariaLabel="Forma de pagamento"
+                  defaultValue="PIX"
+                  options={Object.entries(METHOD_LABEL).map(([value, label]) => ({ value, label }))}
+                />
               </Field>
               <Field label="Data">
                 <input name="paidAt" type="date" className="field" defaultValue={todayInput()} />

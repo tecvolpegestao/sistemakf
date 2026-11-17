@@ -12,8 +12,49 @@ import {
   summarize,
   normalizePlate,
   isValidPlate,
+  stockPosition,
+  issueUnitCost,
+  allocateAmount,
+  movementCostCents,
 } from "./domain";
 import { quoteSummary, whatsAppUrl } from "./format";
+
+describe("estoque e fechamento", () => {
+  it("calcula saldo e custo médio depois da entrada e da saída", () => {
+    const position = stockPosition([
+      { kind: "IN", quantity: 10, unitCostCents: 800 },
+      { kind: "OUT", quantity: 4, unitCostCents: 0 },
+    ]);
+    assert.equal(position.quantity, 6);
+    assert.equal(position.averageCostCents, 800);
+    assert.equal(issueUnitCost(position, 100), 800);
+  });
+
+  it("usa o custo da nova entrada na média", () => {
+    const position = stockPosition([
+      { kind: "IN", quantity: 10, unitCostCents: 1000 },
+      { kind: "IN", quantity: 10, unitCostCents: 2000 },
+    ]);
+    assert.equal(position.quantity, 20);
+    assert.equal(position.averageCostCents, 1500);
+    assert.equal(movementCostCents(2.5, 18000), 45000);
+  });
+
+  it("distribui o recebimento do fechamento sem passar do saldo", () => {
+    const result = allocateAmount(
+      [
+        { id: "a", balanceCents: 50000 },
+        { id: "b", balanceCents: 50000 },
+      ],
+      70000,
+    );
+    assert.deepEqual(result.parts, [
+      { id: "a", amountCents: 50000 },
+      { id: "b", amountCents: 20000 },
+    ]);
+    assert.equal(result.leftoverCents, 0);
+  });
+});
 
 describe("custo e margem", () => {
   it("soma insumos e metragem no custo do serviço", () => {

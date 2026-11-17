@@ -22,6 +22,9 @@ model User {
   audits         AuditLog[]
   completedSteps ServiceStep[]
   orderEvents    OrderEvent[]
+  stockMovements StockMovement[]
+  sales          Sale[]
+  settlements    Settlement[]
 }
 
 model Client {
@@ -39,9 +42,11 @@ model Client {
   active    Boolean       @default(true)
   createdAt DateTime      @default(now())
   updatedAt DateTime      @updatedAt
-  vehicles  Vehicle[]
-  orders    WorkOrder[]
-  packages  CatalogItem[]
+  vehicles    Vehicle[]
+  orders      WorkOrder[]
+  packages    CatalogItem[]
+  sales       Sale[]
+  settlements Settlement[]
 }
 
 model Vehicle {
@@ -84,6 +89,8 @@ model CatalogItem {
   components  PackageComponent[] @relation("PackageParent")
   memberOf    PackageComponent[] @relation("PackageChild")
   orderItems  WorkOrderItem[]
+  movements   StockMovement[]
+  saleItems   SaleItem[]
 
   @@index([type, active])
   @@index([partnerId])
@@ -125,8 +132,10 @@ model WorkOrder {
   items         WorkOrderItem[]
   steps         ServiceStep[]
   payments      Payment[]
-  events        OrderEvent[]
-  attachments   Attachment[]
+  events          OrderEvent[]
+  attachments     Attachment[]
+  movements       StockMovement[]
+  settlementLine  SettlementLine?
 
   @@index([status, paymentStatus])
   @@index([clientId])
@@ -164,19 +173,102 @@ model ServiceStep {
 }
 
 model Payment {
-  id           String    @id @default(cuid())
-  workOrderId  String?
-  amountCents  Int
-  method       String
-  paidAt       DateTime  @default(now())
-  notes        String    @default("")
-  recordedById String
-  createdAt    DateTime  @default(now())
-  workOrder    WorkOrder? @relation(fields: [workOrderId], references: [id])
-  recordedBy   User      @relation(fields: [recordedById], references: [id])
+  id            String        @id @default(cuid())
+  workOrderId   String?
+  saleId        String?
+  settlementId  String?
+  amountCents   Int
+  method        String
+  paidAt        DateTime      @default(now())
+  notes         String        @default("")
+  recordedById  String
+  createdAt     DateTime      @default(now())
+  workOrder     WorkOrder?    @relation(fields: [workOrderId], references: [id])
+  sale          Sale?         @relation(fields: [saleId], references: [id])
+  settlement    Settlement?   @relation(fields: [settlementId], references: [id])
+  recordedBy    User          @relation(fields: [recordedById], references: [id])
 
   @@index([paidAt])
   @@index([workOrderId])
+  @@index([saleId])
+  @@index([settlementId])
+}
+
+model StockMovement {
+  id             String      @id @default(cuid())
+  catalogItemId  String
+  kind           String
+  quantity       Float
+  unitCostCents  Int         @default(0)
+  workOrderId    String?
+  saleId         String?
+  note           String      @default("")
+  createdById    String
+  createdAt      DateTime    @default(now())
+  catalogItem    CatalogItem @relation(fields: [catalogItemId], references: [id])
+  workOrder      WorkOrder?  @relation(fields: [workOrderId], references: [id])
+  sale           Sale?       @relation(fields: [saleId], references: [id])
+  createdBy      User        @relation(fields: [createdById], references: [id])
+
+  @@index([catalogItemId, createdAt])
+  @@index([workOrderId])
+}
+
+model Sale {
+  id           String          @id @default(cuid())
+  number       Int             @unique
+  clientId     String?
+  notes        String          @default("")
+  status       String          @default("OPEN")
+  createdById  String
+  createdAt    DateTime        @default(now())
+  client       Client?         @relation(fields: [clientId], references: [id])
+  createdBy    User            @relation(fields: [createdById], references: [id])
+  items        SaleItem[]
+  payments     Payment[]
+  movements    StockMovement[]
+
+  @@index([createdAt])
+}
+
+model SaleItem {
+  id             String      @id @default(cuid())
+  saleId         String
+  catalogItemId  String
+  name           String
+  quantity       Float
+  unitPriceCents Int
+  unitCostCents  Int
+  costCents      Int
+  sale           Sale        @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  catalogItem    CatalogItem @relation(fields: [catalogItemId], references: [id])
+}
+
+model Settlement {
+  id          String           @id @default(cuid())
+  partnerId   String
+  weekStart   DateTime
+  weekEnd     DateTime
+  status      String           @default("OPEN")
+  notes       String           @default("")
+  closedAt    DateTime?
+  createdById String
+  createdAt   DateTime         @default(now())
+  partner     Client           @relation(fields: [partnerId], references: [id])
+  createdBy   User             @relation(fields: [createdById], references: [id])
+  lines       SettlementLine[]
+  payments    Payment[]
+
+  @@index([partnerId, weekStart])
+}
+
+model SettlementLine {
+  id           String     @id @default(cuid())
+  settlementId String
+  workOrderId  String     @unique
+  amountCents  Int
+  settlement   Settlement @relation(fields: [settlementId], references: [id], onDelete: Cascade)
+  workOrder    WorkOrder  @relation(fields: [workOrderId], references: [id])
 }
 
 model OrderEvent {

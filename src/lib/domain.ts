@@ -184,6 +184,54 @@ export function asRole(value: string): Role {
   return "ATTENDANT";
 }
 
+export type StockMovementInput = {
+  kind: string;
+  quantity: number;
+  unitCostCents: number;
+};
+
+export function tracksStock(type: string) {
+  return type === "RESALE" || type === "MATERIAL_SERVICE";
+}
+
+export function movementCostCents(quantity: number, unitCostCents: number) {
+  return Math.round(quantity * unitCostCents);
+}
+
+export function stockPosition(movements: StockMovementInput[]) {
+  let quantity = 0;
+  let valueCents = 0;
+  for (const movement of movements) {
+    if (movement.kind === "IN" || (movement.kind === "ADJUST" && movement.quantity >= 0)) {
+      quantity += movement.quantity;
+      valueCents += movementCostCents(movement.quantity, movement.unitCostCents);
+      continue;
+    }
+    const outgoing = movement.kind === "OUT" ? movement.quantity : Math.abs(movement.quantity);
+    const average = quantity > 0 ? valueCents / quantity : movement.unitCostCents;
+    quantity -= outgoing;
+    valueCents -= movementCostCents(outgoing, average);
+  }
+  const averageCostCents = quantity > 0 ? Math.round(valueCents / quantity) : 0;
+  return { quantity, valueCents: Math.max(0, Math.round(valueCents)), averageCostCents };
+}
+
+export function issueUnitCost(position: { quantity: number; averageCostCents: number }, fallbackUnitCost: number) {
+  return position.quantity > 0 ? position.averageCostCents : fallbackUnitCost;
+}
+
+export function allocateAmount(balances: { id: string; balanceCents: number }[], amountCents: number) {
+  let left = amountCents;
+  const parts: { id: string; amountCents: number }[] = [];
+  for (const row of balances) {
+    if (left <= 0) break;
+    const take = Math.min(Math.max(0, row.balanceCents), left);
+    if (take > 0) parts.push({ id: row.id, amountCents: take });
+    left -= take;
+  }
+  return { parts, leftoverCents: left };
+}
+
 export function asStatus(value: string): ServiceStatus | null {
   if (
     value === "QUOTE" ||

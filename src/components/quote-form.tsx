@@ -8,6 +8,7 @@ import { centsToInput, formatBRL, formatPercent } from "@/lib/format";
 import { BILLING_LABEL, TYPE_LABEL } from "@/lib/labels";
 import type { DraftItemInput, OrderFormState } from "@/lib/types";
 import { useActionState } from "react";
+import { ComboBox } from "./combo-box";
 import { Alert, Button, Field, Panel } from "./ui";
 
 export type CatalogChoice = {
@@ -142,21 +143,23 @@ export function QuoteForm({
         <Panel className="space-y-4">
           <h2 className="font-display text-lg">Cliente</h2>
           <Field label="Cliente">
-            <select
-              className="field"
+            <ComboBox
+              ariaLabel="Cliente"
+              placeholder="Buscar cliente"
               value={clientId}
-              onChange={(event) => {
-                setClientId(event.target.value);
+              onChange={(next) => {
+                setClientId(next);
                 setVehicleId("");
               }}
-            >
-              <option value="">Cadastrar agora</option>
-              {clients.map((item) => (
-                <option key={item.id} value={item.id}>
-                  {item.name} · {item.type === "PARTNER" ? "Parceiro" : "Particular"}
-                </option>
-              ))}
-            </select>
+              options={[
+                { value: "", label: "Cadastrar agora" },
+                ...clients.map((item) => ({
+                  value: item.id,
+                  label: `${item.name} · ${item.type === "PARTNER" ? "Parceiro" : "Particular"}`,
+                  keywords: item.phone,
+                })),
+              ]}
+            />
           </Field>
           {!clientId ? (
             <div className="grid gap-3 sm:grid-cols-2">
@@ -170,10 +173,15 @@ export function QuoteForm({
                 <input className="field" value={newClient.email} onChange={(event) => setNewClient({ ...newClient, email: event.target.value })} />
               </Field>
               <Field label="Tipo">
-                <select className="field" value={newClient.type} onChange={(event) => setNewClient({ ...newClient, type: event.target.value })}>
-                  <option value="PRIVATE">Particular</option>
-                  <option value="PARTNER">Parceiro</option>
-                </select>
+                <ComboBox
+                  ariaLabel="Tipo de cliente"
+                  value={newClient.type}
+                  onChange={(next) => setNewClient({ ...newClient, type: next })}
+                  options={[
+                    { value: "PRIVATE", label: "Particular" },
+                    { value: "PARTNER", label: "Parceiro" },
+                  ]}
+                />
               </Field>
             </div>
           ) : null}
@@ -193,14 +201,19 @@ export function QuoteForm({
           <h2 className="font-display text-lg">Veículo</h2>
           {client ? (
             <Field label="Veículo do cliente">
-              <select className="field" value={vehicleId} onChange={(event) => setVehicleId(event.target.value)}>
-                <option value="">Cadastrar agora</option>
-                {client.vehicles.map((vehicle) => (
-                  <option key={vehicle.id} value={vehicle.id}>
-                    {vehicle.plate} · {vehicle.brand} {vehicle.model}
-                  </option>
-                ))}
-              </select>
+              <ComboBox
+                ariaLabel="Veículo"
+                placeholder="Buscar placa ou modelo"
+                value={vehicleId}
+                onChange={setVehicleId}
+                options={[
+                  { value: "", label: "Cadastrar agora" },
+                  ...client.vehicles.map((vehicle) => ({
+                    value: vehicle.id,
+                    label: `${vehicle.plate} · ${vehicle.brand} ${vehicle.model}`,
+                  })),
+                ]}
+              />
             </Field>
           ) : null}
           {!vehicleId ? (
@@ -229,25 +242,28 @@ export function QuoteForm({
           {choices.length === 0 ? (
             <p className="text-sm text-muted">Nenhum serviço ativo no catálogo.</p>
           ) : (
-            <div className="flex flex-col gap-2 sm:flex-row">
-              <select className="field" value={addId} onChange={(event) => setAddId(event.target.value)} aria-label="Item do catálogo">
-                <option value="">Escolher serviço ou pacote</option>
-                {(["PACKAGE", "LABOR", "MATERIAL_SERVICE"] as const).map((type) => {
-                  const group = choices.filter((item) => item.type === type);
-                  if (group.length === 0) return null;
-                  return (
-                    <optgroup key={type} label={TYPE_LABEL[type]}>
-                      {group.map((item) => (
-                        <option key={item.id} value={item.id}>
-                          {item.name} · {formatBRL(item.priceCents)}
-                          {item.billing === "PER_METER" ? " / m" : ""}
-                        </option>
-                      ))}
-                    </optgroup>
-                  );
-                })}
-              </select>
-              <Button type="button" variant="secondary" onClick={() => addItem()}>
+            <div className="flex flex-col items-stretch gap-2 sm:flex-row sm:items-center">
+              <div className="min-w-0 flex-1">
+                <ComboBox
+                  ariaLabel="Item do catálogo"
+                  placeholder="Buscar serviço ou pacote"
+                  value={addId}
+                  onChange={setAddId}
+                  options={[
+                    { value: "", label: "Escolher serviço ou pacote" },
+                    ...(["PACKAGE", "LABOR", "MATERIAL_SERVICE"] as const).flatMap((type) =>
+                      choices
+                        .filter((item) => item.type === type)
+                        .map((item) => ({
+                          value: item.id,
+                          group: TYPE_LABEL[type],
+                          label: `${item.name} · ${formatBRL(item.priceCents)}${item.billing === "PER_METER" ? " / m" : ""}`,
+                        })),
+                    ),
+                  ]}
+                />
+              </div>
+              <Button type="button" variant="secondary" className="h-10 shrink-0" onClick={() => addItem()}>
                 Adicionar
               </Button>
             </div>
@@ -319,14 +335,16 @@ export function QuoteForm({
           )}
           {applicators.length > 0 ? (
             <Field label="Aplicador">
-              <select className="field" value={assignedToId} onChange={(event) => setAssignedToId(event.target.value)}>
-                <option value="">Definir depois</option>
-                {applicators.map((person) => (
-                  <option key={person.id} value={person.id}>
-                    {person.name}
-                  </option>
-                ))}
-              </select>
+              <ComboBox
+                ariaLabel="Aplicador"
+                placeholder="Buscar aplicador"
+                value={assignedToId}
+                onChange={setAssignedToId}
+                options={[
+                  { value: "", label: "Definir depois" },
+                  ...applicators.map((person) => ({ value: person.id, label: person.name })),
+                ]}
+              />
             </Field>
           ) : null}
           <Button type="submit" disabled={pending} className="w-full">

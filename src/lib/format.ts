@@ -79,6 +79,36 @@ export function todayInput(date = new Date()) {
   return dateInput(date);
 }
 
+const WEEKDAY_INDEX: Record<string, number> = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
+
+export function addDaysInput(iso: string, days: number) {
+  const date = new Date(`${iso}T12:00:00-03:00`);
+  date.setUTCDate(date.getUTCDate() + days);
+  return dateInput(date);
+}
+
+export function weekRange(anchor = new Date()) {
+  const iso = dateInput(anchor);
+  const weekday = new Intl.DateTimeFormat("en-US", { timeZone: TIME_ZONE, weekday: "short" }).format(
+    new Date(`${iso}T12:00:00-03:00`),
+  );
+  const index = WEEKDAY_INDEX[weekday] ?? 1;
+  const mondayOffset = index === 0 ? -6 : 1 - index;
+  const startIso = addDaysInput(iso, mondayOffset);
+  const endIso = addDaysInput(startIso, 6);
+  return {
+    start: parseDateInput(startIso) ?? new Date(`${startIso}T00:00:00-03:00`),
+    end: parseDateInput(endIso, true) ?? new Date(`${endIso}T23:59:59-03:00`),
+    startIso,
+    endIso,
+  };
+}
+
+export function isWithin(date: Date | null | undefined, start: Date, end: Date) {
+  if (!date) return false;
+  return date >= start && date <= end;
+}
+
 export function whatsAppUrl(phone: string, text: string) {
   const digits = phone.replace(/\D/g, "");
   if (digits.length < 10) return null;

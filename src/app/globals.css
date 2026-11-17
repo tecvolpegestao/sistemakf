@@ -93,7 +93,9 @@ body {
 }
 
 .field {
+  box-sizing: border-box;
   width: 100%;
+  min-height: 2.5rem;
   border-radius: 0.375rem;
   border: 1px solid var(--line);
   background: var(--bg);
@@ -101,6 +103,40 @@ body {
   padding: 0.5rem 0.75rem;
   font-size: 0.875rem;
   line-height: 1.25rem;
+}
+
+textarea.field {
+  height: auto;
+  min-height: 6rem;
+  resize: vertical;
+}
+
+.with-leading-icon {
+  padding-left: 2.5rem;
+}
+
+.button-line {
+  display: inline-flex;
+  box-sizing: border-box;
+  height: 2.5rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.375rem;
+  border: 1px solid var(--line);
+  background: var(--card);
+  padding: 0 0.75rem;
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  color: var(--ink);
+}
+
+.button-line:hover {
+  background: var(--elevated);
+}
+
+th,
+td {
+  vertical-align: middle;
 }
 
 .field:focus {

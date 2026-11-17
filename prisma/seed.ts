@@ -9,7 +9,12 @@ async function main() {
   await prisma.attachment.deleteMany();
   await prisma.orderEvent.deleteMany();
   await prisma.serviceStep.deleteMany();
+  await prisma.settlementLine.deleteMany();
   await prisma.payment.deleteMany();
+  await prisma.settlement.deleteMany();
+  await prisma.stockMovement.deleteMany();
+  await prisma.saleItem.deleteMany();
+  await prisma.sale.deleteMany();
   await prisma.workOrderItem.deleteMany();
   await prisma.workOrder.deleteMany();
   await prisma.packageComponent.deleteMany();
@@ -83,6 +88,9 @@ async function main() {
     icon: string;
     type?: string;
     billing?: string;
+    costCents?: number;
+    unit?: string;
+    minStock?: number;
   }) =>
     prisma.catalogItem.create({
       data: {
@@ -91,6 +99,9 @@ async function main() {
         name: data.name,
         description: data.description,
         priceCents: data.priceCents,
+        costCents: data.costCents ?? 0,
+        unit: data.unit ?? "un",
+        minStock: data.minStock ?? 0,
         icon: data.icon,
         active: true,
       },
@@ -132,18 +143,24 @@ async function main() {
     priceCents: 15000,
     icon: "sun",
   });
-  await service({
+  const ppf = await service({
     name: "PPF",
     description: "Aplicação de paint protection film na área combinada.",
     priceCents: 35000,
+    costCents: 18000,
+    unit: "m",
+    minStock: 10,
     icon: "shield",
     type: "MATERIAL_SERVICE",
     billing: "PER_METER",
   });
-  await service({
+  const pelicula = await service({
     name: "Película fumê",
     description: "Aplicação de película fumê nos vidros combinados.",
     priceCents: 18000,
+    costCents: 7000,
+    unit: "m",
+    minStock: 8,
     icon: "sun",
     type: "MATERIAL_SERVICE",
     billing: "PER_METER",
@@ -162,7 +179,7 @@ async function main() {
       },
     },
   });
-  await prisma.catalogItem.create({
+  const aromatizante = await prisma.catalogItem.create({
     data: {
       type: "RESALE",
       name: "Aromatizante",
@@ -326,6 +343,43 @@ async function main() {
       },
       events: { create: { userId: atendimento.id, message: "Atendimento registrou um recebimento.", createdAt: daysAgo(18) } },
       createdAt: daysAgo(22),
+    },
+  });
+
+  await prisma.stockMovement.createMany({
+    data: [
+      { catalogItemId: ppf.id, kind: "IN", quantity: 40, unitCostCents: 18000, note: "Estoque inicial", createdById: victor.id },
+      { catalogItemId: pelicula.id, kind: "IN", quantity: 25, unitCostCents: 7000, note: "Estoque inicial", createdById: victor.id },
+      { catalogItemId: aromatizante.id, kind: "IN", quantity: 6, unitCostCents: 800, note: "Compra", createdById: victor.id },
+    ],
+  });
+  const sale = await prisma.sale.create({
+    data: {
+      number: 1,
+      clientId: ricardo.id,
+      createdById: atendimento.id,
+      items: {
+        create: {
+          catalogItemId: aromatizante.id,
+          name: aromatizante.name,
+          quantity: 2,
+          unitPriceCents: 1600,
+          unitCostCents: 800,
+          costCents: 1600,
+        },
+      },
+      payments: { create: { amountCents: 3200, method: "CASH", paidAt: daysAgo(1), recordedById: atendimento.id } },
+    },
+  });
+  await prisma.stockMovement.create({
+    data: {
+      catalogItemId: aromatizante.id,
+      kind: "OUT",
+      quantity: 2,
+      unitCostCents: 800,
+      saleId: sale.id,
+      note: "Venda avulsa",
+      createdById: atendimento.id,
     },
   });
 

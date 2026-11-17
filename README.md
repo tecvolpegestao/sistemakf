@@ -2,7 +2,7 @@
 
 Sistema da operação da KF Detail: clientes, veículos, parceiros, catálogo, orçamento em PDF e ordens de serviço até o pagamento.
 
-Esta entrega cobre a operação básica do plano. Estoque com custo real, venda avulsa de produtos e o fechamento semanal com parceiros ficam para as fases seguintes. O catálogo já guarda custo e margem quando o dono informa o custo, e o produto de revenda de exemplo mostra a conta (R$ 8 de custo, R$ 16 de venda, 50% de margem).
+Esta entrega cobre a operação do plano: cadastro, orçamento, ordem de serviço, estoque com custo real, venda avulsa e o fechamento semanal com parceiros. O aromatizante de exemplo custa R$ 8 e vende a R$ 16. O PPF entra a R$ 180 por metro e a película a R$ 70 por metro, como ponto de partida.
 
 ## Como rodar
 

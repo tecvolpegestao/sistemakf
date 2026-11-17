@@ -4,6 +4,7 @@ import { requireRoles } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { normalizePhone, normalizePlate, totalsOf } from "@/lib/domain";
 import { formatBRL, formatPhone, queryValue } from "@/lib/format";
+import { ComboBox } from "@/components/combo-box";
 import { ButtonLink, Empty, PageHeader } from "@/components/ui";
 
 export const metadata: Metadata = { title: "Clientes" };
@@ -48,14 +49,22 @@ export default async function ClientsPage({
         description="Particulares e o acesso rápido para a ficha, o veículo e um novo orçamento."
         actions={<ButtonLink href="/clientes/novo">Novo cliente</ButtonLink>}
       />
-      <form className="mb-4 flex flex-col gap-2 sm:flex-row">
-        <input name="q" defaultValue={q} className="field sm:max-w-xs" placeholder="Nome, telefone ou placa" aria-label="Buscar cliente" />
-        <select name="tipo" defaultValue={tipo} className="field sm:w-48" aria-label="Tipo">
-          <option value="">Todos os tipos</option>
-          <option value="PRIVATE">Particular</option>
-          <option value="PARTNER">Parceiro</option>
-        </select>
-        <button className="rounded-md border border-line bg-card px-3 py-2 text-sm" type="submit">
+      <form className="mb-4 flex flex-wrap items-center gap-2">
+        <input name="q" defaultValue={q} className="field w-full sm:max-w-xs" placeholder="Nome, telefone ou placa" aria-label="Buscar cliente" />
+        <div className="w-full sm:w-48">
+          <ComboBox
+            name="tipo"
+            ariaLabel="Tipo"
+            placeholder="Todos os tipos"
+            defaultValue={tipo}
+            options={[
+              { value: "", label: "Todos os tipos" },
+              { value: "PRIVATE", label: "Particular" },
+              { value: "PARTNER", label: "Parceiro" },
+            ]}
+          />
+        </div>
+        <button className="button-line" type="submit">
           Filtrar
         </button>
       </form>

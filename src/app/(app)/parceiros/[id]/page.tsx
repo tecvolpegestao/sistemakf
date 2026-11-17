@@ -36,6 +36,9 @@ export default async function PartnerPage({ params }: { params: Promise<{ id: st
             <ButtonLink href={`/clientes/${partner.id}/editar`} variant="secondary">
               Editar
             </ButtonLink>
+            <ButtonLink href={`/fechamentos/novo?parceiro=${partner.id}`} variant="secondary">
+              Fechamento
+            </ButtonLink>
             <ButtonLink href={`/os/nova?cliente=${partner.id}`}>Novo orçamento</ButtonLink>
             {whatsApp ? (
               <ButtonLink href={whatsApp} variant="secondary">

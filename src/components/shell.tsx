@@ -4,12 +4,14 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 import {
+  CalendarRange,
   CircleDollarSign,
   ClipboardList,
   LayoutDashboard,
   Library,
   LogOut,
   Menu,
+  Package,
   Search,
   Settings,
   Store,
@@ -29,8 +31,11 @@ const NAV: { href: string; label: string; icon: LucideIcon; roles: SessionUser["
   { href: "/clientes", label: "Clientes", icon: Users, roles: ["OWNER", "ATTENDANT"], group: "Operação" },
   { href: "/parceiros", label: "Parceiros", icon: Store, roles: ["OWNER", "ATTENDANT"], group: "Operação" },
   { href: "/catalogo", label: "Catálogo", icon: Library, roles: ["OWNER", "ATTENDANT"], group: "Comercial" },
+  { href: "/estoque", label: "Estoque", icon: Package, roles: ["OWNER", "ATTENDANT"], group: "Comercial" },
+  { href: "/vendas", label: "Vendas", icon: CircleDollarSign, roles: ["OWNER", "ATTENDANT"], group: "Comercial" },
   { href: "/recebimentos", label: "Recebimentos", icon: CircleDollarSign, roles: ["OWNER", "ATTENDANT"], group: "Comercial" },
   { href: "/a-receber", label: "A receber", icon: CircleDollarSign, roles: ["OWNER", "ATTENDANT"], group: "Comercial" },
+  { href: "/fechamentos", label: "Fechamentos", icon: CalendarRange, roles: ["OWNER", "ATTENDANT"], group: "Comercial" },
   { href: "/configuracoes", label: "Configurações", icon: Settings, roles: ["OWNER"], group: "Sistema" },
 ];
 
@@ -101,8 +106,8 @@ export function Shell({ user, children }: { user: SessionUser; children: React.R
             <Menu className="h-5 w-5" />
           </button>
           <form action="/busca" className="relative mx-auto w-full max-w-md">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-decorative" aria-hidden="true" />
-            <input name="q" className="field pl-9" placeholder="Placa, cliente ou número da OS" aria-label="Buscar" />
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" aria-hidden="true" />
+            <input name="q" className="field with-leading-icon" placeholder="Placa, cliente ou número da OS" aria-label="Buscar" />
           </form>
           <ThemeToggle />
         </header>

@@ -3,6 +3,7 @@
 import { useActionState } from "react";
 import { saveVehicle } from "@/server/client-actions";
 import type { FormState } from "@/lib/types";
+import { ComboBox } from "./combo-box";
 import { Alert, Button, Field, Panel } from "./ui";
 
 export function VehicleForm({
@@ -29,13 +30,13 @@ export function VehicleForm({
       <Panel className="grid gap-4 sm:grid-cols-2">
         <div className="sm:col-span-2">
           <Field label="Cliente">
-            <select name="clientId" className="field" defaultValue={vehicle?.clientId ?? clients[0]?.id ?? ""}>
-              {clients.map((client) => (
-                <option key={client.id} value={client.id}>
-                  {client.name}
-                </option>
-              ))}
-            </select>
+            <ComboBox
+              name="clientId"
+              ariaLabel="Cliente"
+              placeholder="Buscar cliente"
+              defaultValue={vehicle?.clientId ?? clients[0]?.id ?? ""}
+              options={clients.map((client) => ({ value: client.id, label: client.name }))}
+            />
           </Field>
         </div>
         <Field label="Placa">

@@ -5,6 +5,7 @@ import { prisma } from "@/lib/db";
 import { canSeeCosts, marginRatio } from "@/lib/domain";
 import { formatBRL, formatPercent, queryValue } from "@/lib/format";
 import { BILLING_LABEL, TYPE_LABEL } from "@/lib/labels";
+import { ComboBox } from "@/components/combo-box";
 import { ButtonLink, Empty, PageHeader } from "@/components/ui";
 import { ServiceIcon } from "@/components/service-icon";
 
@@ -39,21 +40,22 @@ export default async function CatalogPage({
         description="Serviços, pacotes e produtos. O pacote da Auto Gallery está em R$ 500; os demais preços são um ponto de partida para ajustar."
         actions={showCosts ? <ButtonLink href="/catalogo/novo">Novo item</ButtonLink> : undefined}
       />
-      <form className="mb-4 flex flex-col gap-2 sm:flex-row">
-        <input name="q" defaultValue={q} className="field sm:max-w-xs" placeholder="Nome" aria-label="Buscar item" />
-        <select name="tipo" defaultValue={tipo} className="field sm:w-56" aria-label="Tipo">
-          <option value="">Todos os tipos</option>
-          {Object.entries(TYPE_LABEL).map(([value, label]) => (
-            <option key={value} value={value}>
-              {label}
-            </option>
-          ))}
-        </select>
-        <label className="inline-flex items-center gap-2 text-sm">
+      <form className="mb-4 flex flex-wrap items-center gap-2">
+        <input name="q" defaultValue={q} className="field w-full sm:max-w-xs" placeholder="Nome" aria-label="Buscar item" />
+        <div className="w-full sm:w-56">
+          <ComboBox
+            name="tipo"
+            ariaLabel="Tipo"
+            placeholder="Todos os tipos"
+            defaultValue={tipo}
+            options={[{ value: "", label: "Todos os tipos" }, ...Object.entries(TYPE_LABEL).map(([value, label]) => ({ value, label }))]}
+          />
+        </div>
+        <label className="inline-flex h-10 items-center gap-2 text-sm">
           <input type="checkbox" name="inativos" value="1" defaultChecked={showInactive} />
           Incluir inativos
         </label>
-        <button className="rounded-md border border-line bg-card px-3 py-2 text-sm" type="submit">
+        <button className="button-line" type="submit">
           Filtrar
         </button>
       </form>
